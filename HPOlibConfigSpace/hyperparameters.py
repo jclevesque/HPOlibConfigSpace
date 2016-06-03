@@ -96,10 +96,8 @@ class Constant(Hyperparameter):
         return self.value if vector == 0 else None
 
     def to_vector(self, value):
-        if value == 'None' or isinstance(value, str):
-            return 0
-        else:
-            return value
+        # it is a constant, the vector need not stock it
+        return 0
 
 
 class UnParametrizedHyperparameter(Constant):
@@ -265,6 +263,15 @@ class UniformFloatHyperparameter(UniformMixin, FloatHyperparameter):
             vector = int(np.round(vector / self.q, 0)) * self.q
         return vector
 
+    def to_vector(self, value):
+        x = value
+        if getattr(self, 'log', True):
+            x = np.log(x)
+
+        # rescale the attribute
+        x = (x - self._lower) / (self._upper - self._lower)
+
+        return x
 
 
 class NormalFloatHyperparameter(NormalMixin, FloatHyperparameter):
@@ -402,6 +409,9 @@ class UniformIntegerHyperparameter(UniformMixin, IntegerHyperparameter):
         if self.q is not None:
             vector = int(np.round(vector / self.q, 0)) * self.q
         return int(np.round(vector, 0))
+
+    def to_vector(self, value):
+        return self.ufhp.to_vector(value)
 
 
 class NormalIntegerHyperparameter(NormalMixin, IntegerHyperparameter):

@@ -331,6 +331,15 @@ class ConfigurationSpace(object):
             parents.append(condition.child)
         return parents
 
+    def get_all_children_of(self, name):
+        conditions = self.get_child_conditions_of(name)
+        parents = []
+        for condition in conditions:
+            c = self.get_all_children_of(condition.child.name)
+            parents.append(condition.child)
+            parents.extend(c)
+        return parents
+
     def get_child_conditions_of(self, name):
         if isinstance(name, Hyperparameter):
             name = name.name
@@ -435,7 +444,7 @@ class ConfigurationSpace(object):
                             "with an instance of %s." % Configuration)
         self._check_configuration(configuration)
 
-    def _check_configuration(self, configuration):
+    def _check_configuration(self, configuration, filter_inactive=False):
         for hp_name in self._hyperparameters:
             hyperparameter = self._hyperparameters[hp_name]
             hp_value = configuration[hp_name]
@@ -461,7 +470,8 @@ class ConfigurationSpace(object):
                 if any([parent_value is None for parent_value in
                         parents.values()]):
                     active = False
-
+                elif not getattr(hyperparameter, 'active', True):
+                    active = False
                 else:
                     #if len(parents) == 1:
                     #    parents = parents[0]
@@ -473,9 +483,20 @@ class ConfigurationSpace(object):
                                  hyperparameter.name)
 
             if not active and hp_value is not None:
-                raise ValueError("Inactive hyperparameter '%s' must not be "
-                                 "specified, but has the value: '%s'." %
-                                 (hp_name, hp_value))
+                if filter_inactive:
+                    configuration._values[hp_name] = None
+                else:
+                    raise ValueError("Inactive hyperparameter '%s' must not be "
+                         "specified, but has the value: '%s'." %
+                        (hp_name, hp_value))
+
+            # propagate inactiveness to child parameters
+            if not active:
+                children = self.get_all_children_of(hp_name)
+                for c in children:
+                    c.active = False
+                    configuration._values[c.name] = None
+
         self._check_forbidden(configuration)
 
     def _check_forbidden(self, configuration):
@@ -656,18 +677,29 @@ class Configuration(object):
         elif vector is not None:
             self._values = dict()
             self._vector = vector
+
+            # Filter inactive hyperparameters here
+            self.filter_inactive_params()
         else:
             raise ValueError()
 
     def is_valid_configuration(self):
         self.configuration_space._check_configuration(self)
 
+    def filter_inactive_params(self):
+        self.configuration_space._check_configuration(self, filter_inactive=True)
+        self.configuration_space._check_configuration(self, filter_inactive=True)
+        self.configuration_space._check_configuration(self, filter_inactive=True)
+        # No longer check the vector
+        self._query_values = True
+
     def __getitem__(self, item):
+        # TODO : this behavior is confusing and bug prone, refactor this
         if self._query_values or item in self._values:
             return self._values.get(item)
 
         hyperparameter = self.configuration_space._hyperparameters[item]
-        self._values[item] = hyperparameter._transform(self._vector[item])
+        self._values[item] = hyperparameter._transform(self._vector[item][0])
         return self._values[item]
 
     def __contains__(self, item):
@@ -696,7 +728,8 @@ class Configuration(object):
 
     def populate_vector(self):
         for hyperparameter in self.configuration_space.get_hyperparameters():
-            if not hyperparameter.name in self._values:
+            if (not hyperparameter.name in self._values or
+                    self._values[hyperparameter.name] is None):
                 # fetch the default value for this hyper
                 value = hyperparameter.default
             else:
