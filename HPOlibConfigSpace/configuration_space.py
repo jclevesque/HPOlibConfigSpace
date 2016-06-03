@@ -51,7 +51,7 @@ class ConfigurationSpace(object):
         self._parents = defaultdict(dict)
         # changing this to a normal dict will break sampling because there is
         #  no guarantee that the parent of a condition was evaluated before
-        self._conditionsals = OrderedDict()
+        self._conditionals = OrderedDict()
         self.forbidden_clauses = []
         self.random = np.random.RandomState(seed)
         self._vector_types = None
@@ -139,7 +139,7 @@ class ConfigurationSpace(object):
         self._children[parent_node][child_node] = condition
         self._parents[child_node][parent_node] = condition
         self._sort_hyperparameters()
-        self._conditionsals[child_node] = child_node
+        self._conditionals[child_node] = child_node
 
     def _check_edge(self, parent_node, child_node, condition):
         # check if both nodes are already inserted into the graph
@@ -216,10 +216,10 @@ class ConfigurationSpace(object):
             del self._hyperparameters[node]
             self._hyperparameters[node] = hp
 
-            hp = self._conditionsals.get(node)
+            hp = self._conditionals.get(node)
             if hp is not None:
-                del self._conditionsals[node]
-                self._conditionsals[node] = hp
+                del self._conditionals[node]
+                self._conditionals[node] = hp
 
     def _create_tmp_dag(self):
         tmp_dag = HPOlibConfigSpace.nx.DiGraph()
@@ -384,14 +384,14 @@ class ConfigurationSpace(object):
                       if parent_name != "__HPOlib_configuration_space_root__"]
         return conditions
 
-    def get_all_uncoditional_hyperparameters(self):
+    def get_all_unconditional_hyperparameters(self):
         hyperparameters = [hp_name for hp_name in
                            self._children[
                                '__HPOlib_configuration_space_root__']]
         return hyperparameters
 
     def get_all_conditional_hyperparameters(self):
-        return self._conditionsals
+        return self._conditionals
 
     def get_default_configuration(self):
         return self._check_default_configuration()
@@ -511,6 +511,9 @@ class ConfigurationSpace(object):
         return hash(tuple(sorted(self.__dict__.items())))
 
     def __repr__(self):
+        return ('Configuration Space with %i hyperparameters (%i conditional)' %
+            (len(self._hyperparameters), len(self._conditionals)))
+
         retval = six.StringIO()
         retval.write("Configuration space object:\n  Hyperparameters:\n")
 
@@ -690,6 +693,15 @@ class Configuration(object):
     def _populate_values(self):
         for hyperparameter in self.configuration_space.get_hyperparameters():
             self[hyperparameter.name]
+
+    def populate_vector(self):
+        for hyperparameter in self.configuration_space.get_hyperparameters():
+            if not hyperparameter.name in self._values:
+                # fetch the default value for this hyper
+                value = hyperparameter.default
+            else:
+                value = self._values[hyperparameter.name]
+            self._vector[hyperparameter.name] = hyperparameter.to_vector(value)
 
     def __repr__(self):
         if self._query_values is False:

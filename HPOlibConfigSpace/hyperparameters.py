@@ -53,6 +53,9 @@ class Hyperparameter(object):
     def _transform(self, vector):
         pass
 
+    def to_vector(self, value):
+        return value
+
 
 class Constant(Hyperparameter):
     def __init__(self, name, value):
@@ -71,6 +74,10 @@ class Constant(Hyperparameter):
                             (type(value), allowed_types))
 
         self.value = value
+        # simple notation issue, it seems better to have default values
+        # of all parameters bear the name default, even if a constant
+        # with a default value is counterintuitive.
+        self.default = value
         self._nan = -1
 
     def __repr__(self):
@@ -88,6 +95,12 @@ class Constant(Hyperparameter):
     def _transform(self, vector):
         return self.value if vector == 0 else None
 
+    def to_vector(self, value):
+        if value == 'None' or isinstance(value, str):
+            return 0
+        else:
+            return value
+
 
 class UnParametrizedHyperparameter(Constant):
     pass
@@ -97,6 +110,12 @@ class NumericalHyperparameter(Hyperparameter):
     def __init__(self, name, default):
         super(NumericalHyperparameter, self).__init__(name)
         self.default = default
+
+    def to_vector(self, value):
+        if getattr(self, 'log', True):
+            return np.log(value)
+        else:
+            return value
 
 
 class FloatHyperparameter(NumericalHyperparameter):
@@ -245,6 +264,7 @@ class UniformFloatHyperparameter(UniformMixin, FloatHyperparameter):
         if self.q is not None:
             vector = int(np.round(vector / self.q, 0)) * self.q
         return vector
+
 
 
 class NormalFloatHyperparameter(NormalMixin, FloatHyperparameter):
@@ -465,6 +485,7 @@ class CategoricalHyperparameter(Hyperparameter):
         super(CategoricalHyperparameter, self).__init__(name)
         # TODO check that there is no bullshit in the choices!
         self.choices = choices
+        self.choices_idx = {c:i for i, c in enumerate(self.choices)}
         self._num_choices = len(choices)
         self.default = self.check_default(default)
         self._nan = -1
@@ -503,3 +524,8 @@ class CategoricalHyperparameter(Hyperparameter):
         if vector == -1:
             return None
         return self.choices[vector]
+
+    def to_vector(self, value):
+        if value not in self.choices_idx:
+            raise Exception("Invalid value")
+        return self.choices_idx[value]
