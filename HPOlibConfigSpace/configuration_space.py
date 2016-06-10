@@ -732,11 +732,7 @@ class Configuration(object):
                 value = hyperparameter.default
             else:
                 value = self._values[hyperparameter.name]
-            a = hyperparameter.to_vector(value)
-            print(a)
-            #import ipdb; ipdb.set_trace()
             self._vector[hyperparameter.name] = hyperparameter.to_vector(value)
-            print(self._vector[hyperparameter.name])
 
     def __repr__(self):
         if self._query_values is False:
