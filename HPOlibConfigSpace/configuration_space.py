@@ -672,7 +672,7 @@ class Configuration(object):
             self._query_values = True
             self.is_valid_configuration()
             self._vector = np.ndarray((1,),
-                                      dtype=configuration_space._vector_types)
+                                      dtype=configuration_space._vector_types)[0]
 
         elif vector is not None:
             self._values = dict()
@@ -688,8 +688,6 @@ class Configuration(object):
 
     def filter_inactive_params(self):
         self.configuration_space._check_configuration(self, filter_inactive=True)
-        self.configuration_space._check_configuration(self, filter_inactive=True)
-        self.configuration_space._check_configuration(self, filter_inactive=True)
         # No longer check the vector
         self._query_values = True
 
@@ -699,7 +697,7 @@ class Configuration(object):
             return self._values.get(item)
 
         hyperparameter = self.configuration_space._hyperparameters[item]
-        self._values[item] = hyperparameter._transform(self._vector[item][0])
+        self._values[item] = hyperparameter._transform(self._vector[item])
         return self._values[item]
 
     def __contains__(self, item):
@@ -734,7 +732,11 @@ class Configuration(object):
                 value = hyperparameter.default
             else:
                 value = self._values[hyperparameter.name]
+            a = hyperparameter.to_vector(value)
+            print(a)
+            #import ipdb; ipdb.set_trace()
             self._vector[hyperparameter.name] = hyperparameter.to_vector(value)
+            print(self._vector[hyperparameter.name])
 
     def __repr__(self):
         if self._query_values is False:
