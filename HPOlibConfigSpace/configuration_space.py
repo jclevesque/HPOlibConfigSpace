@@ -86,7 +86,7 @@ class ConfigurationSpace(object):
         self._sort_hyperparameters()
         # Update the vector
         types = [(hp.name,
-                  int if isinstance(hp, (CategoricalHyperparameter, Constant))
+                  int if isinstance(hp, (Constant))
                   else float)
                  for hp in self._hyperparameters.values()]
         self._vector_types = types
@@ -676,6 +676,11 @@ class Configuration(object):
 
         elif vector is not None:
             self._values = dict()
+
+            # Convert vector to proper dtype if needed
+            if vector.dtype != self.configuration_space._vector_types:
+                vector = np.array([tuple(vector), ],
+                    dtype=self.configuration_space._vector_types)[0]
             self._vector = vector
 
             # Filter inactive hyperparameters here
@@ -760,5 +765,4 @@ class Configuration(object):
         # TODO: the hyperparameter names should also be in the configuration
         # object!
         return iter(self.configuration_space._hyperparameters.keys())
-
 

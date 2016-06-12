@@ -528,14 +528,14 @@ class CategoricalHyperparameter(Hyperparameter):
             raise ValueError("Illegal default value %s" % str(default))
 
     def _sample(self, rs, size=None):
-        return rs.randint(0, self._num_choices, size=size)
+        return rs.randint(0, self._num_choices, size=size) / self._num_choices
 
     def _transform(self, vector):
         if vector == -1:
             return None
-        return self.choices[vector]
+        return self.choices[int(np.round(vector * self._num_choices))]
 
     def to_vector(self, value):
         if value not in self.choices_idx:
             raise Exception("Invalid value")
-        return self.choices_idx[value]
+        return self.choices_idx[value] / self._num_choices
