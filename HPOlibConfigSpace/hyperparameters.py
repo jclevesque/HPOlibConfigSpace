@@ -533,7 +533,7 @@ class CategoricalHyperparameter(Hyperparameter):
     def _transform(self, vector):
         if vector == -1:
             return None
-        return self.choices[int(np.round(vector * self._num_choices))]
+        return self.choices[int(vector * self._num_choices)]
 
     def to_vector(self, value):
         if value not in self.choices_idx:
